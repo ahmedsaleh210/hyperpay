@@ -37,11 +37,24 @@ import android.os.Looper;
 import android.widget.Toast;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Arrays;
 import java.util.Set;
+import io.flutter.embedding.android.FlutterFragmentActivity;
+//
+import android.os.Bundle;
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import com.oppwa.mobile.connect.checkout.meta.CheckoutActivityResultContract;
+import com.oppwa.mobile.connect.checkout.meta.CheckoutActivityResult;
+import com.oppwa.mobile.connect.checkout.meta.CheckoutSettings;
+import com.oppwa.mobile.connect.checkout.meta.CheckoutSkipCVVMode;
+import com.oppwa.mobile.connect.provider.ITransactionListener;
 
-public class PaymentPlugin  implements
-        PluginRegistry.ActivityResultListener ,ActivityAware,  ITransactionListener
-        , FlutterPlugin, MethodCallHandler , PluginRegistry.NewIntentListener {
+public class PaymentPlugin extends FlutterFragmentActivity implements
+
+         ITransactionListener
+        , FlutterPlugin, MethodCallHandler, ActivityAware {
 
   private  MethodChannel.Result Result;
   private  String mode = "";
@@ -66,14 +79,73 @@ public class PaymentPlugin  implements
 
   private MethodChannel channel;
   String CHANNEL = "Hyperpay.demo.fultter/channel";
+   private final ActivityResultLauncher checkoutLauncher = registerForActivityResult(
+        new CheckoutActivityResultContract(),
+        this::handleCheckoutResult
+    );
 
   @Override
   public void onAttachedToEngine(@NonNull FlutterPluginBinding flutterPluginBinding) {
     channel = new MethodChannel(flutterPluginBinding.getBinaryMessenger(), CHANNEL);
     channel.setMethodCallHandler(this);
     context = flutterPluginBinding.getApplicationContext();
-
   }
+
+    // @Override
+    // public void configureFlutterEngine(@NonNull FlutterEngine flutterEngine) {
+    //     super.configureFlutterEngine(flutterEngine);
+    //     new MethodChannel(flutterEngine.getDartExecutor().getBinaryMessenger(), CHANNEL).setMethodCallHandler(
+    //             new MethodChannel.MethodCallHandler() {
+    //     @Override
+    //     public void onMethodCall(@NonNull MethodCall call, @NonNull Result result) {
+
+    //       Result = result;
+    //       if (call.method.equals("gethyperpayresponse")) {
+
+    //         String checkoutId = call.argument("checkoutid");
+    //         String type = call.argument("type");
+    //         mode = call.argument("mode");
+    //         Lang = call.argument("lang");
+    //         ShopperResultUrl = call.argument("ShopperResultUrl");
+
+    //         switch (type != null ? type : "NullType") {
+    //           case "ReadyUI" :
+    //             brandsReadyUi = call.argument("brand");
+    //             setStorePaymentDetailsMode = call.argument("setStorePaymentDetailsMode");
+    //             openCheckoutUI(checkoutId) ;
+    //           break;
+    //           case "StoredCards" :
+    //             cvv = call.argument("cvv");
+    //             TokenID = call.argument("TokenID");
+    //             storedCardPayment(checkoutId);
+    //             break;
+
+    //           case "CustomUI" :
+    //             brands = call.argument("brand");
+    //             number = call.argument("card_number");
+    //             holder = call.argument("holder_name");
+    //             year = call.argument("year");
+    //             month = call.argument("month");
+    //             cvv = call.argument("cvv");
+    //             EnabledTokenization = call.argument("EnabledTokenization");
+    //             openCustomUI(checkoutId);
+    //             break;
+
+    //           case "CustomUISTC":
+    //             number = call.argument("phone_number");
+    //             openCustomUISTC(checkoutId);
+    //             break;
+
+    //           default : error("1", "THIS TYPE NO IMPLEMENT" + type, "");
+    //         }
+
+    //       } else {
+    //         notImplemented();
+    //       }
+
+    //     }});
+
+    // }
 
   @Override
   public void onMethodCall(@NonNull MethodCall call, @NonNull Result result) {
@@ -124,10 +196,10 @@ public class PaymentPlugin  implements
 
   }
 
+
   private void openCheckoutUI(String checkoutId) {
 
-    Set<String> paymentBrands = new LinkedHashSet<>(brandsReadyUi);
-    // CHECK PAYMENT MODE
+    Set<String> paymentBrands = new LinkedHashSet<>(Arrays.asList("VISA", "MASTER")); // CHECK PAYMENT MODE
     CheckoutSettings checkoutSettings;
     if (mode.equals("live")) {
       //LIVE MODE
@@ -140,30 +212,33 @@ public class PaymentPlugin  implements
     }
 
     // SET LANG
-    checkoutSettings.setLocale(Lang);
+    // checkoutSettings.setLocale(Lang);
 
     // SHOW TOTAL PAYMENT AMOUNT IN BUTTON
     // checkoutSettings.setTotalAmountRequired(true);
 
     //SET SHOPPER
-    checkoutSettings.setShopperResultUrl(ShopperResultUrl + "://result");
+    // checkoutSettings.setShopperResultUrl(ShopperResultUrl + "://result");
 
     //SAVE PAYMENT CARDS FOR NEXT
-    if (setStorePaymentDetailsMode.equals("true")) {
-      checkoutSettings.setStorePaymentDetailsMode(CheckoutStorePaymentDetailsMode.PROMPT);
-    }
+    // if (setStorePaymentDetailsMode.equals("true")) {
+    //   checkoutSettings.setStorePaymentDetailsMode(CheckoutStorePaymentDetailsMode.PROMPT);
+    // }
     //CHANGE THEME
-    checkoutSettings.setThemeResId(R.style.NewCheckoutTheme);
+    // checkoutSettings.setThemeResId(R.style.NewCheckoutTheme);
 
     // CHECKOUT BROADCAST RECEIVER
-    ComponentName componentName = new ComponentName(
-            context.getPackageName(), CheckoutBroadcastReceiver.class.getName());
+    // ComponentName componentName = new ComponentName(
+    //         getPackageName(), CheckoutBroadcastReceiver.class.getName());
+
+    //   checkoutSettings.setComponentName(componentName);
 
     // SET UP THE INTENT AND START THE CHECKOUT ACTIVITY
-    Intent intent = checkoutSettings.createCheckoutActivityIntent(context.getApplicationContext(), componentName);
+    // Intent intent = checkoutSettings.createCheckoutActivityIntent(context.getApplicationContext(), componentName);
 
     // START ACTIVITY
-    activity.startActivityForResult(intent, CheckoutActivity.REQUEST_CODE_CHECKOUT);
+    System.out.println("Checkoutid: " + checkoutId);
+    checkoutLauncher.launch(checkoutSettings);
 
   }
 
@@ -173,7 +248,7 @@ public class PaymentPlugin  implements
 
       TokenPaymentParams paymentParams = new TokenPaymentParams(checkoutId, TokenID, brands, cvv);
 
-      paymentParams.setShopperResultUrl(ShopperResultUrl + "://result");
+      // paymentParams.setShopperResultUrl(ShopperResultUrl + "://result");
 
       Transaction transaction = new Transaction(paymentParams);
 
@@ -240,7 +315,7 @@ public class PaymentPlugin  implements
                     checkoutId, brands, number, holder, month, year, cvv
             ).setTokenizationEnabled(EnabledTokenizationTemp);//Set Enabled TokenizationTemp
 
-            paymentParams.setShopperResultUrl(ShopperResultUrl + "://result");
+            // paymentParams.setShopperResultUrl(ShopperResultUrl + "://result");
 
             Transaction transaction = new Transaction(paymentParams);
 
@@ -286,7 +361,7 @@ public class PaymentPlugin  implements
 
         stcPayPaymentParams.setMobilePhoneNumber(number);
 
-        stcPayPaymentParams.setShopperResultUrl(ShopperResultUrl + "://result");
+        // stcPayPaymentParams.setShopperResultUrl(ShopperResultUrl + "://result");
 
         Transaction transaction = new Transaction(stcPayPaymentParams);
 
@@ -302,34 +377,54 @@ public class PaymentPlugin  implements
 
   }
 
-  @Override
-  public boolean onActivityResult(int requestCode, int resultCode, Intent data) {
-    switch (resultCode) {
-      case CheckoutActivity.RESULT_OK :
-        /* transaction completed */
-        Transaction transaction = data.getParcelableExtra(CheckoutActivity.CHECKOUT_RESULT_TRANSACTION);
-        /* resource path if needed */
-        // String resourcePath = data.getStringExtra(CheckoutActivity.CHECKOUT_RESULT_RESOURCE_PATH);
-        if (transaction.getTransactionType() == TransactionType.SYNC) {
-          /* check the result of synchronous transaction */
-          success("SYNC");
+      private void handleCheckoutResult(@NonNull CheckoutActivityResult result) {
+        if (result.isCanceled()) {
+            return;
         }
-
-      break ;
-      case CheckoutActivity.RESULT_CANCELED :
-              /* shopper canceled the checkout process */
-              error("2", "Canceled", "");
-        break ;
-
-      case CheckoutActivity.RESULT_ERROR :
-              /* shopper error the checkout process */
-              error("3", "Checkout Result Error", "");
-        break ;
-
+         if (result.isErrored()) {
+          error("2", "Canceled", "");
+            return;
+        }
+        Transaction transaction = result.getTransaction();
+        if (transaction.getTransactionType() == TransactionType.SYNC) {
+          success("SYNC");
+          return;
+        } 
+        // else {
+        //   Uri uri = Uri.parse(transaction.getRedirectUrl());
+        //   Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+        //   activity.startActivity(intent);
+        // }
     }
 
-    return  true ;
-  }
+  // @Override
+  // public boolean onActivityResult(int requestCode, int resultCode, Intent data) {
+  //   switch (resultCode) {
+  //     case CheckoutActivity.RESULT_OK :
+  //       /* transaction completed */
+  //       Transaction transaction = data.getParcelableExtra(CheckoutActivity.CHECKOUT_RESULT_TRANSACTION);
+  //       /* resource path if needed */
+  //       // String resourcePath = data.getStringExtra(CheckoutActivity.CHECKOUT_RESULT_RESOURCE_PATH);
+  //       if (transaction.getTransactionType() == TransactionType.SYNC) {
+  //         /* check the result of synchronous transaction */
+  //         success("SYNC");
+  //       }
+
+  //     break ;
+  //     case CheckoutActivity.RESULT_CANCELED :
+  //             /* shopper canceled the checkout process */
+  //             error("2", "Canceled", "");
+  //       break ;
+
+  //     case CheckoutActivity.RESULT_ERROR :
+  //             /* shopper error the checkout process */
+  //             error("3", "Checkout Result Error", "");
+  //       break ;
+
+  //   }
+
+  //   return  true ;
+  // }
 
   public void success(final Object result) {
     handler.post(
@@ -347,14 +442,13 @@ public class PaymentPlugin  implements
             () -> Result.notImplemented());
   }
 
-  @Override
-  public boolean onNewIntent(@NonNull Intent intent) {
-    // TO BACK TO VIEW
-    if (intent.getScheme() != null && intent.getScheme().equals(ShopperResultUrl)) {
-      success("success");
-    }
-    return  true ;
-  }
+  // @Override
+  // public void onNewIntent(@NonNull Intent intent) {
+  //   // TO BACK TO VIEW
+  //   if (intent.getScheme() != null && intent.getScheme().equals(ShopperResultUrl)) {
+  //     success("success");
+  //   }
+  // }
 
   @Override
   public void transactionCompleted(@NonNull Transaction transaction) {
@@ -410,10 +504,20 @@ public class PaymentPlugin  implements
   @Override
   public void onAttachedToActivity(@NonNull ActivityPluginBinding binding) {
     activity = binding.getActivity();
-    binding.addActivityResultListener(this);
-    binding.addOnNewIntentListener(this); // TO LISTEN ON NEW INTENT OPEN
+    // checkoutLauncher = binding.registerForActivityResult(
+    //     new CheckoutActivityResultContract(),
+    //     this::handleCheckoutResult
+    // );
+    // binding.addActivityResultListener(this);
+    // binding.addOnNewIntentListener(this); // TO LISTEN ON NEW INTENT OPEN
 
   }
+
+  @Override
+public void onReattachedToActivityForConfigChanges(@NonNull ActivityPluginBinding binding) {
+    activity = binding.getActivity();
+   
+}
 
   @Override
   public void onDetachedFromActivityForConfigChanges() {
@@ -421,12 +525,8 @@ public class PaymentPlugin  implements
   }
 
   @Override
-  public void onReattachedToActivityForConfigChanges(@NonNull ActivityPluginBinding binding) {
-
-  }
-
-  @Override
   public void onDetachedFromActivity() {
+
 
   }
 }
